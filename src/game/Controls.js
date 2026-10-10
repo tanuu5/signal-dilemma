@@ -123,15 +123,32 @@ export class Controls {
     const d = Math.hypot(a.x - b.x, a.y - b.y), ang = Math.atan2(b.y - a.y, b.x - a.x);
     const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
     if (this.pinch.d > 10 && d > 10) this._zoomAt(mx, my, this.pinch.d / d);
+    // 指をひねった向きに街も回す（画面は下向きが y 正なので、da が正なら時計回り）
     let da = ang - this.pinch.ang;
     while (da > Math.PI) da -= Math.PI * 2;
     while (da < -Math.PI) da += Math.PI * 2;
-    this.rig.rotate(-da);
-    this.rig.cur.yaw = this.rig.goal.yaw;
+    this._rotateAt(mx, my, da);
     // 2 本指で動かす
     const g0 = this.ground(this.pinch.mx, this.pinch.my, new THREE.Vector3()), g1 = this.ground(mx, my, new THREE.Vector3());
     if (g0 && g1) { this.rig.goal.x -= g1.x - g0.x; this.rig.goal.z -= g1.z - g0.z; this.rig._clampGoal(); }
     this.pinch = { d, ang, mx, my };
+  }
+
+  /** 画面の点の下の地面を中心に回す（指のあいだの街が、指についてくるように）。a が正なら、画面の上で時計回り。 */
+  _rotateAt(x, y, a) {
+    const r = this.rig;
+    const p = this.ground(x, y, new THREE.Vector3());
+    r.rotate(a);
+    r.cur.yaw = r.goal.yaw;
+    if (!p) return;
+    // 方位が a 増えると、カメラは注視点のまわりを回る。注視点も同じだけ p のまわりで回せば、p は画面の同じ所に残る
+    const c = Math.cos(a), s = Math.sin(a);
+    for (const t of [r.goal, r.cur]) {
+      const vx = t.x - p.x, vz = t.z - p.z;
+      t.x = p.x + vx * c + vz * s;
+      t.z = p.z + vz * c - vx * s;
+    }
+    r._clampGoal();
   }
 
   /** 画面の点に向かって寄る（その点が指の下に残るように）。 */
