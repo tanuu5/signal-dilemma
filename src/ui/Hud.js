@@ -15,7 +15,7 @@ export class Hud {
     root.insertAdjacentHTML('beforeend', `
 <div id="hud" class="hidden">
   <div class="topbar">
-    <div class="clock"><span class="wd"></span><span class="time">07:00</span><div class="dayprog"><i></i></div></div>
+    <div class="clock"><span class="wd"></span><span class="time">07:00</span><span class="spd"></span><div class="dayprog"><i></i></div></div>
     <div class="sat"><span class="lab" data-i18n="hud.sat">${t('hud.sat')}</span><div class="bar"><i></i><b></b></div><span class="val">72</span></div>
     <div class="served"><span class="lab" data-i18n="hud.served">${t('hud.served')}</span><span class="val">0</span></div>
     <div class="helpers hidden"><span class="lab" data-i18n="hud.helpers">${t('hud.helpers')}</span><span class="val"></span></div>
@@ -34,7 +34,7 @@ export class Hud {
   </div>
   <div class="tools">
     <button data-hud="home" class="tb home"><i data-glyph="home"></i><b data-i18n="hud.home">${t('hud.home')}</b></button>
-    <button data-hud="fast" class="tb fast"><i data-glyph="fast"></i><b data-i18n="hud.fast">${t('hud.fast')}</b></button>
+    <button data-hud="fast" class="tb fast"><i data-glyph="fast"></i><b data-i18n="hud.fast">${t('hud.fast')}</b><span class="x"></span></button>
     <button data-hud="slow" class="tb slow"><i data-glyph="slow"></i><b data-i18n="hud.slow">${t('hud.slow')}</b><span class="gauge"><i></i></span></button>
   </div>
   <div class="edge"></div>
@@ -42,7 +42,7 @@ export class Hud {
     this.el = root.querySelector('#hud');
     const q = (s) => this.el.querySelector(s);
     this.$ = {
-      wd: q('.clock .wd'), time: q('.clock .time'), prog: q('.dayprog i'), satBar: q('.sat .bar i'), satGhost: q('.sat .bar b'), satVal: q('.sat .val'), sat: q('.sat'),
+      wd: q('.clock .wd'), time: q('.clock .time'), spd: q('.clock .spd'), fastX: q('.tb.fast .x'), prog: q('.dayprog i'), satBar: q('.sat .bar i'), satGhost: q('.sat .bar b'), satVal: q('.sat .val'), sat: q('.sat'),
       served: q('.served .val'), comms: q('.comms'), alert: q('.alertbar'), alertTxt: q('.alertbar .txt'), chips: q('.chips'), panel: q('.panel'),
       pname: q('.pname .nm'), pphase: q('.pname .ph'), autoLab: q('.pb.auto .am'), toggleBtn: q('.pb.toggle'), walkBtn: q('.pb.walk'), autoBtn: q('.pb.auto'),
       fast: q('.tb.fast'), slow: q('.tb.slow'), gauge: q('.tb.slow .gauge i'), edge: q('.edge'), helpers: q('.topbar .helpers'), helpersVal: q('.topbar .helpers .val'),
@@ -159,10 +159,15 @@ export class Hud {
     this.$.helpers.classList.toggle('idle', h.idle > 0);
   }
 
-  setTools({ fast, slow, gauge }) {
+  /** 早送り・思考加速の状態。speed：時間の倍率（時計の横に出す。ふつうの速さなら出さない）。fastX：早送りの倍率。 */
+  setTools({ fast, slow, gauge, speed = 1, fastX = 2.6 }) {
     this.$.fast.classList.toggle('on', !!fast);
     this.$.slow.classList.toggle('on', !!slow);
     this.$.gauge.style.width = `${Math.round(gauge * 100)}%`;
+    const spd = speed === 1 ? '' : `×${speed}`;
+    if (this._spd !== spd) { this._spd = spd; this.$.spd.textContent = spd; this.$.spd.dataset.k = speed > 1 ? 'fast' : speed < 1 ? 'slow' : ''; }
+    const fx = `×${fastX}`;
+    if (this.$.fastX.textContent !== fx) this.$.fastX.textContent = fx;
   }
 
   // ---------------------------------------------------------------- 交差点の上の表示

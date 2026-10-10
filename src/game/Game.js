@@ -872,7 +872,7 @@ export class Game {
       const peds = W.sim.pedWaiting(X);
       H.setPanel(X, { name: this.nodeName(X), phase: sig.phase, busy: sig.busy || sig.stage === 'Y', mode: sig.mode, peds: peds.count, autoOk: D.day.n >= 3, showAuto: D.day.n >= 3 || helpers > 0 });
     } else H.setPanel(null);
-    H.setTools({ fast: this.fast, slow: this.speed === SLOW, gauge: this.gauge });
+    H.setTools({ fast: this.fast, slow: this.speed === SLOW, gauge: this.gauge, speed: this.state === 'play' ? this.speed : 1, fastX: FAST });
     const idle = this.idleHelpers();
     H.setHelpers(helpers ? { working: Math.min(helpers, W.net.inter.length - 1) - idle, idle } : null);
     // 交差点の上の表示
