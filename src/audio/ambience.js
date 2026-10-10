@@ -32,10 +32,12 @@ export const LAYERS = {
     A.lfo(0.07, 180, bp.frequency);
     return bp;
   } },
-  /** 雨（外）：さらさらとした高い音と、地面に当たる低い音。 */
-  rain: { level: 0.5, build(ctx, A) {
+  /** 雨（外）：さらさらとした高い音と、地面に当たる低い音。
+   *  曲より小さく、街のざわめきと同じくらいに（0.5 だと曲より 4 dB 大きく、水曜にうるさかった）。
+   *  曲には 2 kHz より上がほとんどないので、雨の高い音はそのまま耳につく。5 kHz から上は丸めておく。 */
+  rain: { level: 0.2, build(ctx, A) {
     const mix = A.gain(1);
-    A.noise().connect(A.filter('highpass', 500)).connect(A.filter('lowpass', 7500)).connect(mix);
+    A.noise().connect(A.filter('highpass', 500)).connect(A.filter('lowpass', 5000)).connect(mix);
     A.noise(1.3).connect(A.filter('lowpass', 420, 0.9)).connect(A.gain(0.7)).connect(mix);
     return mix;
   } },
