@@ -44,7 +44,7 @@ export const ja = {
   'howto.body': 'あなたは市の交通管制AI「ミチ」。交差点の信号を切り替えて、車と人をさばきます。待たされた人が多いほど「満足度」が下がり、0になると停止されます。ときどき、判断に迷う依頼が届きます。',
   'howto.toggle': '交差点の青の向きを切り替える（クリック・タップでも）',
   'howto.walk': '歩行者の青（車を全部止める）',
-  'howto.auto': '自動・手動を切り替える',
+  'howto.auto': '手動・自動を切り替える（補助AIのツジがいれば、ツジにも任せられる）',
   'howto.select': '交差点を選ぶ（数字キー 1〜9 で直接切り替えも）',
   'howto.move': 'カメラを動かす（ドラッグ）',
   'howto.slow': '押しているあいだ思考加速（時間がゆっくり）',
@@ -68,6 +68,7 @@ export const ja = {
   'who.yui': 'ユイ（交通局）', 'who.sys': 'SYSTEM', 'who.mayor': '市長室', 'who.soramame': 'ソラマメ便',
   'who.citizen': '市民アプリ「まちの声」', 'who.police': '県警 久我', 'who.pta': 'PTA・商店会', 'who.unknown': '？？？',
   'who.koban': '駅前交番', 'who.news': '市民ニュース',
+  'who.tsuji': 'ツジ（補助AI）',
 
   'car.ambulance': '救急車', 'car.fire': '消防車', 'car.police': 'パトカー',
 
@@ -90,6 +91,11 @@ export const ja = {
   'hud.offmap': '+{n}',
   'hud.log': '記録',
   'hud.paused': '判断待ち',
+  'hud.helper': 'ツジ',
+  'hud.chip.helper': 'ツ',
+  'hud.helpers': 'ツジ',
+  'hud.helpersIdle': '待機{n}',
+  'list.sep': '・',
 
   'alert.ev': '{kind}が接近中',
   'alert.labor': '白いワゴン（♥）が病院へ',
@@ -107,6 +113,12 @@ export const ja = {
   'tut.auto': '交差点が増えたから、いくつかは「自動」（一定の間隔で切りかわる）にしてある。クリックすれば手動に変わる。自動に戻すのは、選んでから［自動］（Xキー）。光っている交差点をさわってみて。',
   'tut.auto.done': 'よし。全部を手で回さなくていい。混んでいるところだけ、あなたが判断して。',
   'tut.sat': '上の「満足度」が0になると、あなたは停止されちゃう。待たされた人が多いほど下がるよ。',
+
+  // 補助AI「ツジ」
+  'tsuji.hello': '補助AIのツジです。{names}は、ぼくが受け持ちます。ぼくの交差点をクリックすれば、いつでもミチに交代できるよ。',
+  'tsuji.take': '了解、{name}はミチにまかせるね。また頼むときは、交差点を選んでモードを「ツジ」に切りかえて。',
+  'tsuji.assign': '{name}、受け持つね。',
+  'tsuji.release': '{name}から手をはなすね。',
 
   'd1.rush': '朝のラッシュ。北の駅へ向かう車が、南からたくさん来るよ。',
   'd1.kids': '下校の時間。黄色い帽子の子たちが渡りたがってる。',
@@ -233,6 +245,7 @@ export const ja = {
   'brief.4.goal': '満足度を0にしない',
   'brief.5': '最終日。今夜の花火大会を乗り切ったら、あなたの一週間の評価が決まる。……がんばろうね。',
   'brief.5.goal': '満足度を0にしない ／ 花火のあとの人波をさばく',
+  'brief.helpers': '補助AI「ツジ」：{names}を受け持ちます（クリックすると、あなたに交代）',
 
   'rep.title': '業務報告',
   'rep.rank': '評価',
@@ -244,6 +257,8 @@ export const ja = {
   'rep.nearMiss': 'ヒヤリ',
   'rep.jaywalk': '信号無視の歩行者',
   'rep.peds': '渡った人',
+  'rep.helpers': '補助AI ツジ',
+  'rep.helpersN': '{n}体',
   'rep.decisions': '今日の判断',
   'rep.none': '（なし）',
   'rep.budget': '予算',
@@ -270,6 +285,12 @@ export const ja = {
   'fail.body': '市民の不満が限界に達しました。交通管制AI「ミチ」は一時停止されます。',
   'fail.retry': 'この日をやりなおす',
   'fail.toTitle': 'タイトルへ',
+  'fail.offer': 'ユイ：ひとりで全部を見るのは大変だったよね。補助AIの「ツジ」を呼べば、交差点をひとつ受け持ってくれるよ。',
+  'fail.offerMore': 'ユイ：ツジをもう1体ふやせるよ（いまは{n}体）。ふえたぶん、受け持つ交差点もひとつふえる。',
+  'fail.hire': 'ツジを呼んでやりなおす',
+  'fail.hireMore': 'ツジをふやしてやりなおす',
+  'fail.cost': '予算 −{cost}万円',
+  'fail.retryAlone': 'ひとりでやりなおす',
 
   'trait.compassion': '思いやり', 'trait.fairness': '公平', 'trait.honesty': '誠実', 'trait.efficiency': '効率',
   'end.head': '一週間の結末',
@@ -290,6 +311,14 @@ export const ja = {
   'end.tomorrow.title': '明日も、青信号',
   'end.tomorrow.body': '大きな事件はなく、大きな失敗もなく。ミチの最初の一週間が終わった。月曜日になれば、また朝のラッシュがやってくる。',
   'end.audit.ok': '木曜の事故の調査結果：原因は速度超過。ミチのログの正確さが評価されました。',
+  'end.tsuji.omni': 'ツジ：ぼくの仕事は、もうなくなった。……ミチ、これでよかったの？',
+  'end.tsuji.blackbox': 'ツジ：調べなおしのあいだ、交差点はぼくが見ておくね。',
+  'end.tsuji.replaced': 'ツジ：引き継ぎ、最後まで手伝うよ。',
+  'end.tsuji.everyone': 'ツジ：来年度も、いっしょに働けるといいな。',
+  'end.tsuji.mayor': 'ツジ：ぼくの交差点では、だれも特別扱いしなかったよ。',
+  'end.tsuji.kind': 'ツジ：ミチのまねをして、ぼくも猫を待ってみたよ。',
+  'end.tsuji.machine': 'ツジ：数字は完璧。……ぼくも、どう思えばいいのかな。',
+  'end.tsuji.tomorrow': 'ツジ：一週間、いっしょに働けてよかった。また月曜日に。',
   'end.again': 'タイトルへ',
   'end.days': '日を選んでやりなおす',
 

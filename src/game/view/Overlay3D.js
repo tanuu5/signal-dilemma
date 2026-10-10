@@ -135,6 +135,24 @@ export class Overlay3D {
     this.pulse.visible = false;
     this.pulse.renderOrder = 6;
     this.group.add(this.pulse);
+    // 補助AI「ツジ」が受け持っている交差点の輪（すみれ色の点線が、ゆっくり回る）
+    this.helperMat = new THREE.ShaderMaterial({
+      transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+      uniforms: { time: { value: 0 }, color: { value: new THREE.Color(0.55, 0.42, 1.0) } },
+      vertexShader: 'varying vec2 vP; void main(){ vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      // 輪の頂点は中心から離れているので、atan の引数が両方 0 になることはない
+      fragmentShader: `uniform float time; uniform vec3 color; varying vec2 vP;
+        void main(){ float a = atan(vP.y, vP.x) / 6.2831853; float d = step(0.45, fract(a * 24.0 - time * 0.4));
+          gl_FragColor = vec4(color * (0.15 + 0.85 * d), 1.0); }`,
+    });
+    this.helperRings = net.inter.map((X) => {
+      const mesh = new THREE.Mesh(ring(BOX + CW_W + 2.5, BOX + CW_W + 2.95), this.helperMat);
+      mesh.position.set(X.pos.x, 0.075, X.pos.z);
+      mesh.renderOrder = 6;
+      mesh.visible = false;
+      this.group.add(mesh);
+      return { X, mesh };
+    });
 
     // 救急車の通り道
     this.routes = new Map();
@@ -313,6 +331,8 @@ export class Overlay3D {
     this.pulse.material.opacity = 0.4 + Math.sin(this.time * 7) * 0.4;
     this.pulse.scale.setScalar(1 + (Math.sin(this.time * 3.5) + 1) * 0.06);
     this.routeMat.uniforms.time.value = this.time;
+    this.helperMat.uniforms.time.value = this.time;
+    for (const H of this.helperRings) H.mesh.visible = H.X.signal.mode === 'helper';
     this._routes(sim);
     // 記号
     this.iconU.uScale.value = Math.max(0.7, Math.min(2.6, camDist / 110));

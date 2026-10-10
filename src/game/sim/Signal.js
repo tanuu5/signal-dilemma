@@ -1,7 +1,8 @@
 // 交差点の信号。現示（phase）は南北（NS）・東西（EW）・歩行者（WALK）の 3 つ。
 //   車の現示：G（青）→ Y（黄）→ AR（全赤：交差点が空くまで）→ 次の現示
 //   歩行者：W（青）→ WF（青の点滅）→ WC（横断歩道が空くまで）→ 車の現示
-// mode：'manual'（プレイヤーが切り替えるまで今の青を続ける）／'auto'（一定の周期で切り替える）
+// mode：'manual'（プレイヤーが切り替えるまで今の青を続ける）／'auto'（一定の周期で切り替える）／
+//       'helper'（補助AI「ツジ」が切り替える。判断は game/Helper.js。ここでは manual と同じく自分では切り替えない）
 import { AXIS } from './geom.js';
 import { SIGNAL } from './constants.js';
 

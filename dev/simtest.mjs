@@ -1,7 +1,9 @@
 // シミュレーションだけを Node で回して確かめる（描画なし）。
-//   node dev/simtest.mjs [--map 1x1|2x1|2x2|3x2|3x3] [--ctl auto|bot|none|sensor] [--min 6] [--rate 14] [--seed 1] [--ped 6] [--verbose]
+//   node dev/simtest.mjs [--map 1x1|2x1|2x2|3x2|3x3] [--ctl auto|bot|helper|none|sensor] [--min 6] [--rate 14] [--seed 1] [--ped 6] [--verbose]
+//   helper：補助AI「ツジ」と同じ判断（src/game/Helper.js）で全部の交差点を回す
 // 確かめること：車どうしの重なり（＝ぶつかり）、NaN、全体が止まったまま動かない状態、通過台数と待ち時間。
 import { Sim } from '../src/game/sim/Sim.js';
+import { smartStep } from '../src/game/Helper.js';
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 ? argv[i + 1] : d; };
@@ -53,6 +55,7 @@ const t0 = Date.now();
 let evSpawned = 0;
 for (let i = 0; i < steps; i++) {
   if (ctl === 'bot') bot(sim);
+  else if (ctl === 'helper') for (const X of sim.net.inter) smartStep(sim, X);
   if (has('ev') && i % (60 * 50) === 600) {
     const terms = sim.net.terms.filter((t) => t.entry);
     const a = terms[i % terms.length], b = terms[(i * 7 + 3) % terms.length];

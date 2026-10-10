@@ -16,12 +16,12 @@ import { Fireworks } from './view/Fireworks.js';
 import { Rain } from './view/Rain.js';
 import { Controls } from './Controls.js';
 import { Director } from './Director.js';
+import { smartStep } from './Helper.js';
 import { DAYS } from './campaign/days.js';
 import { DILEMMAS } from './campaign/dilemmas.js';
 import { UPGRADES } from './campaign/upgrades.js';
 import { chooseEnding } from './campaign/endings.js';
 import { ICON } from './view/textures.js';
-import { AXIS } from './sim/geom.js';
 
 // 状態の表。title：タイトルを出す ／ hud：ゲーム中の表示 ／ input：'play' | 'actions' | 'menu' ／ music：曲 ／ modal：開く画面 ／ duck：曲を下げる
 export const STATES = {
@@ -39,10 +39,11 @@ export const STATES = {
 };
 
 const FAST = 2.6, SLOW = 0.3;
+const HELPER_COST = 50;   // 補助AI「ツジ」を 1 体呼ぶ費用（万円）
 const TRAIT_KEYS = ['compassion', 'fairness', 'honesty', 'efficiency'];
 
 function newCampaign() {
-  return { day: 1, maxDay: 1, traits: { compassion: 0, fairness: 0, honesty: 0, efficiency: 0 }, trust: 50, budget: 100, flags: {}, upgrades: [], decisions: [], results: {}, snaps: {}, ranks: {} };
+  return { day: 1, maxDay: 1, traits: { compassion: 0, fairness: 0, honesty: 0, efficiency: 0 }, trust: 50, budget: 100, helpers: 0, flags: {}, upgrades: [], decisions: [], results: {}, snaps: {}, ranks: {} };
 }
 const clone = (o) => JSON.parse(JSON.stringify(o));
 
@@ -191,6 +192,12 @@ export class Game {
 
   enter_paused() { this.audio.sfx('pause'); }
 
+  enter_play() {
+    if (!this._helloPending) return;
+    this._helloPending = false;
+    if (this._helperNames()) this.hud.say('tsuji', t('tsuji.hello', { names: this._helperNames() }));
+  }
+
   toTitle() {
     this.director = null;
     this.loadTitleWorld();
@@ -229,6 +236,7 @@ export class Game {
     const modes = { ...day.init.mode };
     const phases = { ...day.init.phase };
     this.setWorld(day.map, { seed: 1000 + n * 17, modes, phases });
+    this._assignHelpers(day);
     camp.difficulty = settings.difficulty === 'easy' ? 0.78 : 1;
     this.director = new Director(this.world, day, camp, this._ui());
     this._frame(true);
@@ -242,6 +250,7 @@ export class Game {
     this.alertCar = null;
     this.hud.clearMsgs();
     this.tutMsg = null;
+    this._helloPending = true;
     // 少しだけ進めて、車がいる状態から
     this.world.sim.setDemand(this.world.sim.demand);
     for (let i = 0; i < 60 * 6; i++) { this.world.sim.step(1 / 60); }
@@ -251,10 +260,16 @@ export class Game {
     else this.setState('play');
   }
 
-  retryDay() {
+  /** hire：補助AI「ツジ」を 1 体ふやしてから（予算を使う。その日のはじめの状態に足すので、次にやりなおしても残る）。 */
+  retryDay({ hire = false } = {}) {
     const n = this.camp?.day || 1;
     const snap = this.camp?.snaps?.[n];
     if (snap) { const snaps = this.camp.snaps; this.store.data.camp = { ...clone(snap), snaps }; }
+    if (hire && this.camp) {
+      this.camp.helpers = (this.camp.helpers || 0) + 1;
+      this.camp.budget = Math.max(0, this.camp.budget - HELPER_COST);
+      this.audio.sfx('buy');
+    }
     this.startDay(n);
   }
 
@@ -328,6 +343,7 @@ export class Game {
     S.addModal('brief', `<section id="m-brief" class="modal hidden"><div class="card" data-scroll>
       <div class="daynum"></div><div class="dayname"></div><p class="bt"></p>
       <div class="goal"><b data-i18n="brief.goal">${t('brief.goal')}</b><span class="gt"></span></div>
+      <p class="hl hidden"></p>
       <button data-act="begin" data-i18n="brief.start">${t('brief.start')}</button></div></section>`);
     S.addModal('dilemma', `<section id="m-dilemma" class="modal hidden"><div class="card" data-scroll>
       <div class="dh" data-i18n="dl.title">${t('dl.title')}</div>
@@ -335,10 +351,7 @@ export class Game {
       <p class="body"></p><div class="choices"></div></div></section>`);
     S.addModal('report', `<section id="m-report" class="modal hidden"><div class="card" data-scroll></div></section>`);
     S.addModal('shop', `<section id="m-shop" class="modal hidden"><div class="card" data-scroll></div></section>`);
-    S.addModal('fail', `<section id="m-fail" class="modal hidden"><div class="card">
-      <div class="failtitle" data-i18n="fail.title">${t('fail.title')}</div><p data-i18n="fail.body">${t('fail.body')}</p>
-      <button data-act="retry" data-i18n="fail.retry">${t('fail.retry')}</button>
-      <button data-act="toTitle" data-i18n="fail.toTitle">${t('fail.toTitle')}</button></div></section>`);
+    S.addModal('fail', `<section id="m-fail" class="modal hidden"><div class="card" data-scroll></div></section>`);
     S.addModal('ending', `<section id="m-ending" class="modal hidden"><div class="card" data-scroll></div></section>`);
     S.addModal('days', `<section id="m-days" class="modal hidden"><div class="card" data-scroll></div></section>`);
     S.addModal('confirm', `<section id="m-confirm" class="modal hidden"><div class="card">
@@ -356,6 +369,10 @@ export class Game {
     if (getLang() === 'en') m.querySelector('.dayname').textContent = `${t('wd.' + day.wd)} — ${t('day.' + n)}`;
     m.querySelector('.bt').textContent = t('brief.' + n);
     m.querySelector('.gt').textContent = t(`brief.${n}.goal`);
+    const names = this._helperNames();
+    const hl = m.querySelector('.hl');
+    hl.classList.toggle('hidden', !names);
+    hl.textContent = names ? t('brief.helpers', { names }) : '';
     this.setState('brief');
   }
 
@@ -422,6 +439,7 @@ export class Game {
         <dt>${t('rep.ev')}</dt><dd>${sum.evOnTime} / ${sum.evTotal}</dd>
         <dt>${t('rep.nearMiss')}</dt><dd>${sum.nearMiss}</dd>
         <dt>${t('rep.jaywalk')}</dt><dd>${sum.jaywalk}</dd>
+        ${camp.helpers ? `<dt>${t('rep.helpers')}</dt><dd>${t('rep.helpersN', { n: camp.helpers })}</dd>` : ''}
       </dl>
       <b class="note">${t('rep.decisions')}</b><ul class="decs">${dec}</ul>
       <div class="money"><span>${t('rep.budget')} ${t('rep.man', { n: camp.budget })}（${t('rep.income', { n: inc })}）</span><span>${t('rep.trust')} ${Math.round(camp.trust)}</span></div>
@@ -457,6 +475,7 @@ export class Game {
     card.innerHTML = `<div class="daynum">${t('end.head')}</div>
       <div class="endtitle">${t('end.' + id + '.title')}</div>
       <p class="endbody">${esc(t('end.' + id + '.body'))}</p>${audit}
+      ${camp.helpers ? `<p class="note tsuji">${esc(t('end.tsuji.' + id))}</p>` : ''}
       <div class="traits">${TRAIT_KEYS.map((k) => {
         const v = camp.traits[k] || 0;
         const w = Math.abs(v) / max * 50;
@@ -478,8 +497,28 @@ export class Game {
   }
 
   failDay() {
+    this._failCard();
     this.setState('fail');
     this.audio.sfx('fail');
+  }
+
+  /** 停止の画面。ツジを呼べるとき（2 日目から。ふやせるのは交差点の数より 1 つ少ないところまで）は、それを先に出す。 */
+  _failCard() {
+    const camp = this.camp, n = camp?.helpers || 0;
+    const hire = this.canHire();
+    const card = this.screens.modals.fail.querySelector('.card');
+    card.innerHTML = `<div class="failtitle">${t('fail.title')}</div><p>${t('fail.body')}</p>
+      ${hire ? `<div class="offer"><p>${esc(t(n ? 'fail.offerMore' : 'fail.offer', { n }))}</p>
+        <div class="money"><span>${t('rep.budget')} ${t('rep.man', { n: camp.budget })}</span></div></div>
+        <button data-act="retryHelp" class="hire">${t(n ? 'fail.hireMore' : 'fail.hire')}<small>${t('fail.cost', { cost: Math.min(HELPER_COST, camp.budget) })}</small></button>` : ''}
+      <button data-act="retry">${t(hire ? 'fail.retryAlone' : 'fail.retry')}</button>
+      <button data-act="toTitle">${t('fail.toTitle')}</button>`;
+  }
+
+  canHire() {
+    const D = this.director;
+    if (!this.camp || !D || D.day.n < 2) return false;
+    return (this.camp.helpers || 0) < this.world.net.inter.length - 1;
   }
 
   /** モーダルのボタン（Screens が知らない data-act）。 */
@@ -523,6 +562,7 @@ export class Game {
       case 'pickDay': this.replayDay(+el.dataset.n); break;
       case 'newYes': this._startNew(); break;
       case 'retry': this.retryDay(); break;
+      case 'retryHelp': if (this.canHire()) this.retryDay({ hire: true }); break;
       case 'toTitle': this.toTitle(); break;
     }
   }
@@ -553,6 +593,8 @@ export class Game {
   doToggle(X) {
     const sig = X.signal;
     if (sig.mode === 'auto') { sig.mode = 'manual'; this.director?.onAction('auto', X); }
+    // ツジの交差点を切り替えたら、そこはミチに交代（ツジは手があく）
+    else if (sig.mode === 'helper') { sig.mode = 'manual'; this._tsuji('tsuji.take', X); }
     if (sig.toggle('player')) { this.audio.sfx('switch'); this.director?.onAction('toggle', X); }
     else this.audio.sfx('deny');
   }
@@ -564,11 +606,58 @@ export class Game {
     else this.audio.sfx('deny');
   }
 
+  /** 交差点のモードを順に切り替える：手動 → ツジ（手のあいたツジがいれば）→ 自動（水曜から）→ 手動。 */
   doAuto(X) {
-    X.signal.mode = X.signal.mode === 'auto' ? 'manual' : 'auto';
-    X.signal.greenT = 0;
-    this.audio.sfx(X.signal.mode === 'auto' ? 'autoOn' : 'autoOff');
+    const sig = X.signal, from = sig.mode;
+    const order = ['manual'];
+    if (from === 'helper' || this.idleHelpers() > 0) order.push('helper');
+    if (from === 'auto' || (this.director?.day.n ?? 3) >= 3) order.push('auto');
+    if (order.length < 2) { this.audio.sfx('deny'); return; }
+    const to = order[(order.indexOf(from) + 1) % order.length];
+    sig.mode = to;
+    sig.greenT = 0;
+    this.audio.sfx(to === 'manual' ? 'autoOff' : 'autoOn');
+    if (to === 'helper') this._tsuji('tsuji.assign', X);
+    else if (from === 'helper') this._tsuji('tsuji.release', X);
     this.director?.onAction('auto', X);
+  }
+
+  // ---------------------------------------------------------------- 補助AI「ツジ」
+  /** その日の受け持ち（days.js の helpers の順に、呼んだ数だけ。交差点がひとつはミチに残る数まで）。 */
+  _assignHelpers(day) {
+    let left = Math.min(this.camp.helpers || 0, this.world.net.inter.length - 1);
+    for (const id of day.helpers || []) {
+      if (left <= 0) break;
+      const X = this.world.net.nodes.get(id);
+      if (X && X.signal.mode !== 'helper') { X.signal.mode = 'helper'; left--; }
+    }
+  }
+
+  /** 手のあいているツジの数。 */
+  idleHelpers() {
+    if (!this.director || !this.camp?.helpers) return 0;
+    const inter = this.world.net.inter;
+    const used = inter.reduce((n, X) => n + (X.signal.mode === 'helper' ? 1 : 0), 0);
+    return Math.max(0, Math.min(this.camp.helpers, inter.length - 1) - used);
+  }
+
+  _helperNames() {
+    return this.world.net.inter.filter((X) => X.signal.mode === 'helper').map((X) => this.nodeName(X)).join(t('list.sep'));
+  }
+
+  _tsuji(key, X) {
+    this.hud.say('tsuji', t(key, { name: this.nodeName(X), names: this._helperNames() }));
+    this.audio.sfx('msg');
+  }
+
+  /** ツジが毎フレーム、受け持ちの交差点を見る。ミチが判断で優先すると決めた車（配送の契約・市長の車列・病院へ急ぐ車）も通す。 */
+  _helpers() {
+    const sim = this.world.sim;
+    const f = this.camp?.flags || {};
+    const priority = f.deal || f.motorcade || f.laborHelped
+      ? (c) => (c.tag === 'deal' && !!f.deal) || (c.tag === 'vip' && !!f.motorcade) || (c.tag === 'labor' && !!f.laborHelped)
+      : null;
+    for (const X of this.world.net.inter) if (X.signal.mode === 'helper') smartStep(sim, X, 'helper', priority);
   }
 
   hudButton(name, el, down) {
@@ -628,8 +717,10 @@ export class Game {
   }
 
   /**
-   * 確認用の自動プレイ（__dev.game.bot = 'smart' | 'idle'）。smart：待っている側が多ければ切り替え、歩行者もさばく。
+   * 確認用の自動プレイ（__dev.game.bot = 'smart' | 'one' | 'idle'）。smart：手動の交差点を全部、ツジと同じ判断でさばく。
+   * one：選んでいる交差点だけ（ひとりで手が回らない人のつもり）。idle：何もしない。
    * 判断は __dev.game.botChoice（'a' など）で選び、日のはじめ・報告も自動で進める。
+   * 停止したら次の日へ進む。botHire なら、ツジを呼べるかぎり呼んでやりなおす。botStopAtFail なら停止の画面で止まる。
    */
   _bot(dt) {
     const mode = this.bot;
@@ -637,9 +728,11 @@ export class Game {
     if (this.state === 'dilemma') { this._botWait = (this._botWait || 0) + dt; if (this._botWait > 0.5) { this._botWait = 0; this.onAction('choose', { dataset: { id: this.dilemmaId, choice: this.botChoice || 'a' } }); } return; }
     if ((this.state === 'report' || this.state === 'shop') && this.botStopAtReport) return;
     if (this.state === 'report' || this.state === 'shop') { this.botReports = [...(this.botReports || []), this.camp.results[this.camp.day - 1]]; if (this.camp.day <= 5) this.startDay(this.camp.day); else this._ending(); return; }
+    if (this.state === 'fail' && this.botStopAtFail) return;
     if (this.state === 'fail') {
       const D = this.director;
-      this.botFails = [...(this.botFails || []), { day: D.day.n, clock: +D.clock.toFixed(2), served: this.world.sim.stats.served }];
+      this.botFails = [...(this.botFails || []), { day: D.day.n, clock: +D.clock.toFixed(2), served: this.world.sim.stats.served, helpers: this.camp.helpers || 0 }];
+      if (this.botHire && this.canHire()) { this.onAction('retryHelp'); return; }
       this.camp.day = D.day.n + 1;
       if (this.camp.day <= 5) this.startDay(this.camp.day); else this.setState('title');
       return;
@@ -650,17 +743,9 @@ export class Game {
     const sim = this.world.sim;
     for (const X of this.world.net.inter) {
       const s = X.signal;
-      if (s.mode === 'auto' && mode !== 'manualAll') continue;
-      if (s.stage !== 'G' || s.phase === 'WALK') continue;
-      const cur = s.phase, other = cur === 'NS' ? 'EW' : 'NS';
-      const a = sim.axisDemand(X, cur), b = sim.axisDemand(X, other);
-      const peds = sim.pedWaiting(X);
-      // 救急車が来ている向きは青にする
-      let evAxis = null;
-      for (const c of sim.cars) if (c.em && c.siren && c.seg.kind === 'lane' && c.seg.to === X && c.seg.len - c.s < 60) evAxis = AXIS[c.seg.heading];
-      if (evAxis) { if (evAxis !== cur) s.toggle('bot'); continue; }
-      if (s.greenT > 5 && (peds.count >= 5 || peds.maxWait > 30)) { s.walk('bot'); continue; }
-      if (s.greenT > 4 && b.count > 0 && (!a.approaching || s.greenT > 14) && b.count + b.wait * 0.1 > a.count * 0.6) s.toggle('bot');
+      if (s.mode === 'helper' || (s.mode === 'auto' && mode !== 'manualAll')) continue;
+      if (mode === 'one' && X !== this.sel) continue;
+      smartStep(sim, X, 'bot');
     }
   }
 
@@ -685,6 +770,7 @@ export class Game {
       this.hours = 17.7;
     }
     if (simDt > 0) {
+      if (this.state === 'play' && this.director) this._helpers();
       this.world.step(simDt, (e) => this.director?.onSim(e));
       if (this.director && this.state === 'play') {
         this.director.step(simDt);
@@ -780,19 +866,22 @@ export class Game {
     H.setServed(W.sim.stats.served);
     H.tick(dt);
     const X = this.sel;
+    const helpers = this.camp?.helpers || 0;
     if (X) {
       const sig = X.signal;
       const peds = W.sim.pedWaiting(X);
-      H.setPanel(X, { name: this.nodeName(X), phase: sig.phase, busy: sig.busy || sig.stage === 'Y', auto: sig.mode === 'auto', peds: peds.count, showAuto: D.day.n >= 3 });
+      H.setPanel(X, { name: this.nodeName(X), phase: sig.phase, busy: sig.busy || sig.stage === 'Y', mode: sig.mode, peds: peds.count, autoOk: D.day.n >= 3, showAuto: D.day.n >= 3 || helpers > 0 });
     } else H.setPanel(null);
     H.setTools({ fast: this.fast, slow: this.speed === SLOW, gauge: this.gauge });
+    const idle = this.idleHelpers();
+    H.setHelpers(helpers ? { working: Math.min(helpers, W.net.inter.length - 1) - idle, idle } : null);
     // 交差点の上の表示
-    const multi = W.net.inter.length > 2 || D.day.n >= 3;
+    const multi = W.net.inter.length > 2 || D.day.n >= 3 || helpers > 0;
     const chips = W.net.inter.map((N) => {
       const p = this._screen(N.pos.x, 9, N.pos.z);
       const peds = W.sim.pedWaiting(N);
       const vis = !p.behind && p.x > -20 && p.x < innerWidth + 20 && p.y > 40 && p.y < innerHeight + 20 && (peds.count > 0 || multi);
-      return { id: N.id, x: p.x, y: p.y, peds: peds.count, maxWait: peds.maxWait, auto: N.signal.mode === 'auto', sel: N === X, vis, showMode: multi };
+      return { id: N.id, x: p.x, y: p.y, peds: peds.count, maxWait: peds.maxWait, mode: N.signal.mode, sel: N === X, vis, showMode: multi };
     });
     H.setChips(chips);
     for (const c of chips) H.chipEls.get(c.id)?.querySelector('.md')?.classList.toggle('hidden', !c.showMode);
@@ -827,7 +916,7 @@ export class Game {
     if (alert !== this._alertTxt) { this._alertTxt = alert; H.setAlert(alert); }
     // 選んでいる・指している交差点の輪
     this.overlay.setHover(this.hover && this.hover !== X ? this.hover : null);
-    void ICON; void AXIS;
+    void ICON;
   }
 
   /** 環境音・サイレン・歩行者信号の音。 */
@@ -894,14 +983,16 @@ export class Game {
     return {
       state: this.state, map: this.world?.mapId, day: D?.day.n, clock: D ? +D.clock.toFixed(2) : null, sat: D ? +D.sat.toFixed(1) : null,
       sel: this.sel?.id, phase: this.sel?.signal.phase, stage: this.sel?.signal.stage, cars: sim?.cars.length, peds: sim?.peds.list.length,
-      served: sim?.stats.served, offmap: sim?.offmap(), speed: this.speed, camp: this.camp ? { day: this.camp.day, traits: this.camp.traits, trust: this.camp.trust, budget: this.camp.budget, flags: this.camp.flags } : null,
+      served: sim?.stats.served, offmap: sim?.offmap(), speed: this.speed, modes: this.world ? Object.fromEntries(this.world.net.inter.map((X) => [X.id, X.signal.mode])) : null,
+      camp: this.camp ? { day: this.camp.day, traits: this.camp.traits, trust: this.camp.trust, budget: this.camp.budget, helpers: this.camp.helpers || 0, flags: this.camp.flags } : null,
     };
   }
 
   /** 確認・撮影用：その日のその時刻から（dilemma を開いたままにしない）。 */
-  devGoto(name, { day = 1, h = null, sel = null } = {}) {
+  devGoto(name, { day = 1, h = null, sel = null, helpers = null } = {}) {
     if (name === 'title') { this.toTitle(); return this.state; }
     if (!this.camp) { this.store.data.camp = newCampaign(); }
+    if (helpers !== null) this.camp.helpers = helpers;
     if (name === 'play' || name === 'brief') {
       this.camp.day = day;
       this.startDay(day, { brief: name === 'brief' });

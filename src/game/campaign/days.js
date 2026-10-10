@@ -6,6 +6,7 @@
 //     msg：知らせ（話す人 who、キー key）、tut：チュートリアル（操作を待つ）、ev：救急車など、dilemma：判断、
 //     rain：雨、kids：下校、closure：通行止め、fireworks：花火、bus：バスの運行
 //   start：最初の信号の向き、modes：最初の自動・手動
+//   helpers：補助AI「ツジ」が受け持つ順（やりなおすときに呼んだ数だけ、前から）。チュートリアルの交差点と、その日の中心の交差点は入れない
 const MIX = { sedan: 0.42, kei: 0.26, van: 0.1, taxi: 0.08, truck: 0.08, bus: 0.0 };
 
 export const DAYS = [
@@ -53,6 +54,7 @@ export const DAYS = [
     mix: { ...MIX },
     bus: { from: ['W0', 'E0'], to: ['E0', 'W0'], every: 32 },
     init: { phase: { X0_0: 'EW', X1_0: 'EW' }, mode: { X0_0: 'manual', X1_0: 'manual' } },
+    helpers: ['X0_0'],
     events: [
       { h: 7.0, do: 'msg', who: 'yui', key: 'd2.hello' },
       { h: 7.25, do: 'tut', id: 'select', node: 'X1_0' },
@@ -79,6 +81,7 @@ export const DAYS = [
     mix: { ...MIX, bus: 0.0 },
     bus: { from: ['W1', 'E1'], to: ['E1', 'W1'], every: 36 },
     init: { phase: { X0_0: 'NS', X1_0: 'NS', X0_1: 'EW', X1_1: 'NS' }, mode: { X0_0: 'auto', X1_0: 'auto', X0_1: 'manual', X1_1: 'auto' } },
+    helpers: ['X0_1', 'X1_0', 'X0_0'],
     events: [
       { h: 7.0, do: 'msg', who: 'yui', key: 'd3.hello' },
       { h: 7.2, do: 'tut', id: 'auto', node: 'X1_1' },
@@ -106,6 +109,7 @@ export const DAYS = [
     mix: { ...MIX },
     bus: { from: ['W1', 'E1'], to: ['E1', 'W1'], every: 34 },
     init: { phase: {}, mode: { X0_0: 'auto', X2_0: 'auto', X0_1: 'auto', X2_1: 'auto', X1_0: 'manual', X1_1: 'manual' } },
+    helpers: ['X1_1', 'X2_1', 'X0_1', 'X2_0', 'X0_0'],
     events: [
       { h: 7.0, do: 'msg', who: 'yui', key: 'd4.hello' },
       { h: 8.3, do: 'dilemma', id: 'mayor' },
@@ -133,6 +137,7 @@ export const DAYS = [
     mix: { ...MIX },
     bus: { from: ['W1', 'E1', 'N1'], to: ['E1', 'W1', 'S1'], every: 26 },
     init: { phase: {}, mode: { X0_0: 'auto', X1_0: 'auto', X2_0: 'auto', X0_1: 'auto', X1_1: 'manual', X2_1: 'manual', X0_2: 'auto', X1_2: 'auto', X2_2: 'auto' } },
+    helpers: ['X2_1', 'X1_0', 'X1_2', 'X0_1', 'X2_2', 'X0_0', 'X2_0', 'X0_2'],
     events: [
       { h: 15.0, do: 'msg', who: 'yui', key: 'd5.hello' },
       { h: 15.9, do: 'dilemma', id: 'hacker' },

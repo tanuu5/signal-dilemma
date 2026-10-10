@@ -3,11 +3,12 @@
 //   左上：連絡（ユイや市民からの知らせ。チュートリアルは終わるまで残る）
 //   上の真ん中：知らせの帯（救急車が接近中…）
 //   下：選んでいる交差点の操作盤（切替・歩行者・自動）、右下：思考加速・早送り・全体
-//   交差点の上：待っている人の数（押すと歩行者の青）と自動の印。端のゲート：入れない車の数
+//   交差点の上：待っている人の数（押すと歩行者の青）とモードの印（M 手動・A 自動・ツ 補助AI）。端のゲート：入れない車の数
+//   上の帯の「ツジ」：補助AI が受け持っている数と、手のあいている数
 import { t, onLangChange } from '../core/i18n.js';
 
-const WHO_ICON = { yui: 'Y', sys: '>', mayor: '市', soramame: 'ソ', citizen: '声', police: '警', pta: '学', unknown: '?', koban: '交', news: 'N' };
-const WHO_ICON_EN = { mayor: 'M', soramame: 'S', citizen: 'C', police: 'P', pta: 'T', koban: 'K' };
+const WHO_ICON = { yui: 'Y', sys: '>', mayor: '市', soramame: 'ソ', citizen: '声', police: '警', pta: '学', unknown: '?', koban: '交', news: 'N', tsuji: 'ツ' };
+const WHO_ICON_EN = { mayor: 'M', soramame: 'S', citizen: 'C', police: 'P', pta: 'T', koban: 'K', tsuji: 'T' };
 
 export class Hud {
   constructor(root) {
@@ -17,6 +18,7 @@ export class Hud {
     <div class="clock"><span class="wd"></span><span class="time">07:00</span><div class="dayprog"><i></i></div></div>
     <div class="sat"><span class="lab" data-i18n="hud.sat">${t('hud.sat')}</span><div class="bar"><i></i><b></b></div><span class="val">72</span></div>
     <div class="served"><span class="lab" data-i18n="hud.served">${t('hud.served')}</span><span class="val">0</span></div>
+    <div class="helpers hidden"><span class="lab" data-i18n="hud.helpers">${t('hud.helpers')}</span><span class="val"></span></div>
     <button class="pausebtn" data-hud="pause" aria-label="pause">Ⅱ</button>
   </div>
   <div class="comms"></div>
@@ -43,7 +45,7 @@ export class Hud {
       wd: q('.clock .wd'), time: q('.clock .time'), prog: q('.dayprog i'), satBar: q('.sat .bar i'), satGhost: q('.sat .bar b'), satVal: q('.sat .val'), sat: q('.sat'),
       served: q('.served .val'), comms: q('.comms'), alert: q('.alertbar'), alertTxt: q('.alertbar .txt'), chips: q('.chips'), panel: q('.panel'),
       pname: q('.pname .nm'), pphase: q('.pname .ph'), autoLab: q('.pb.auto .am'), toggleBtn: q('.pb.toggle'), walkBtn: q('.pb.walk'), autoBtn: q('.pb.auto'),
-      fast: q('.tb.fast'), slow: q('.tb.slow'), gauge: q('.tb.slow .gauge i'), edge: q('.edge'),
+      fast: q('.tb.fast'), slow: q('.tb.slow'), gauge: q('.tb.slow .gauge i'), edge: q('.edge'), helpers: q('.topbar .helpers'), helpersVal: q('.topbar .helpers .val'),
     };
     this.msgs = [];
     this.chipEls = new Map();
@@ -136,13 +138,25 @@ export class Hud {
     if (this._pnm !== info.name) { this._pnm = info.name; this.$.pname.textContent = info.name; }
     const ph = info.busy ? t('hud.busy') : t('hud.phase.' + info.phase);
     if (this._pph !== ph) { this._pph = ph; this.$.pphase.textContent = ph; this.$.pphase.dataset.ph = info.busy ? 'busy' : info.phase; }
-    const am = `${t('hud.auto')} ${info.auto ? 'ON' : 'OFF'}`;
+    // モードのボタン（押すと 手動 → ツジ → 自動 の順に変わる）。水曜からは「自動 ON/OFF」（チュートリアルの［自動］）、
+    // 自動のない火曜（ツジがいるときだけ出す）は「手動」。ツジが受け持っていれば「ツジ」
+    const am = info.mode === 'helper' ? t('hud.helper') : info.autoOk ? `${t('hud.auto')} ${info.mode === 'auto' ? 'ON' : 'OFF'}` : t('hud.manual');
     if (this._pam !== am) { this._pam = am; this.$.autoLab.textContent = am; }
-    this.$.autoBtn.classList.toggle('on', info.auto);
+    this.$.autoBtn.classList.toggle('on', info.mode === 'auto');
+    this.$.autoBtn.classList.toggle('helper', info.mode === 'helper');
     this.$.autoBtn.classList.toggle('hidden', info.showAuto === false);
     this.$.toggleBtn.classList.toggle('dis', info.busy);
     this.$.walkBtn.classList.toggle('hot', info.peds > 0);
     this.$.walkBtn.classList.toggle('dis', info.phase === 'WALK');
+  }
+
+  /** 補助AI「ツジ」：{ working, idle }（いなければ null）。 */
+  setHelpers(h) {
+    this.$.helpers.classList.toggle('hidden', !h);
+    if (!h) return;
+    const txt = `×${h.working}${h.idle ? ` · ${t('hud.helpersIdle', { n: h.idle })}` : ''}`;
+    if (this._hlp !== txt) { this._hlp = txt; this.$.helpersVal.textContent = txt; }
+    this.$.helpers.classList.toggle('idle', h.idle > 0);
   }
 
   setTools({ fast, slow, gauge }) {
@@ -152,7 +166,7 @@ export class Hud {
   }
 
   // ---------------------------------------------------------------- 交差点の上の表示
-  /** list：[{ id, x, y, peds, maxWait, auto, sel, vis }]（x, y は画面の座標） */
+  /** list：[{ id, x, y, peds, maxWait, mode, sel, vis }]（x, y は画面の座標。mode：'manual' | 'auto' | 'helper'） */
   setChips(list) {
     const seen = new Set();
     for (const c of list) {
@@ -177,8 +191,10 @@ export class Hud {
         pw.dataset.lv = c.maxWait > 35 ? 'hi' : c.maxWait > 18 ? 'mid' : 'lo';
       }
       const md = el.querySelector('.md');
-      md.classList.toggle('on', c.auto);
-      md.textContent = c.auto ? 'A' : 'M';
+      md.classList.toggle('on', c.mode === 'auto');
+      md.classList.toggle('helper', c.mode === 'helper');
+      const mt = c.mode === 'auto' ? 'A' : c.mode === 'helper' ? t('hud.chip.helper') : 'M';
+      if (md.textContent !== mt) md.textContent = mt;
       el.classList.toggle('sel', !!c.sel);
     }
     for (const [id, el] of this.chipEls) if (!seen.has(id)) { el.remove(); this.chipEls.delete(id); }
@@ -215,7 +231,7 @@ export class Hud {
   }
 
   _relabel() {
-    this._wd = this._pnm = this._pph = this._pam = null;
+    this._wd = this._pnm = this._pph = this._pam = this._hlp = null;
     for (const el of this.gateEls.values()) el.textContent = '';
   }
 }

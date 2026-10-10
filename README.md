@@ -50,7 +50,7 @@
 | 青の向きを切り替える | 交差点をクリック／選んで `Space` | A（×） | 交差点をタップ |
 | 交差点を選ぶ | `←` `↑` `↓` `→`（数字キー `1`〜`9` で選んで切り替え） | 十字キー | タップ |
 | 歩行者の青（車は全部止まる） | `Z`／交差点の上の 🚶 | X（□） | 🚶 か［歩行者］ |
-| 自動・手動（水曜から） | `X`／交差点の上の A・M | Y（△） | A・M か［自動］ |
+| 自動・手動・ツジ（補助AI）を切り替える | `X`／交差点の上の A・M・ツ | Y（△） | A・M・ツ か操作盤のモード |
 | 思考加速（押しているあいだ時間がゆっくり） | `Shift` | LT・RT | ［思考加速］を押し続ける |
 | 早送り | `F` | RB | ［早送り］ |
 | 救急車などの知らせへカメラを寄せる | `C` | LB | ［知らせへ］ |
@@ -64,6 +64,7 @@
 - 救急車・消防車は赤い点線の道を通ります。先回りして青にしておくと、遅れずに通れます。
 - 待ちすぎた歩行者は、信号を無視して渡りはじめます（車が急ブレーキ＝ヒヤリ）。
 - 交差点が多い日は「自動」（一定の間隔で切り替わる）も使えます。クリックすれば手動に戻ります。
+- 停止されて日をやりなおすときは、予算を少し使って補助AI「ツジ」を呼べます。ツジは交差点をひとつ受け持ち（点線の輪と「ツ」の印）、その日から金曜まで手伝ってくれます。ツジの交差点をクリックすれば自分に交代でき、手のあいたツジは、交差点を選んでモードを「ツジ」にすると、また受け持ちます。やりなおすたびに 1 体ずつ増やせます（自分の交差点がひとつは残る数まで）。
 - 一日の終わりに業務報告（評価 S〜D）。日と日のあいだに、予算で強化（感応式センサー、緊急車両優先など）を導入できます。
 - 判断の選び方で「思いやり・公平・誠実・効率」の 4 つが変わり、金曜の夜に一週間の結末が決まります。どの答えにも、正解・不正解はありません。
 
@@ -83,6 +84,7 @@
 
 ## 更新履歴
 
+- **2026-10-11**：補助AI「ツジ」を追加。停止されて日をやりなおすとき、予算を少し使ってツジを呼ぶと、交差点をひとつ受け持ってくれる。あわせて、確認用の自動操縦（ツジと同じ判断）が青を 4 秒ごとに切り替え続け、発進の遅いバスが渡れずに停止される場合があったのを直した（v1.1.0）
 - **2026-10-11**：スマホで 2 本指をひねって回すと、街が逆の向きに回っていたのを直した。指のあいだの街が、指についてくるように回る（v1.0.1）
 - **2026-10-10**：公開（v1.0.0）
 
@@ -110,7 +112,7 @@ URL パラメータ：
 交通のシミュレーションだけを Node で回して確かめる：
 
 ```bash
-node dev/simtest.mjs --map 2x2 --ctl auto --min 8 --ev   # 重なり・NaN・止まったままの状態を調べる
+node dev/simtest.mjs --map 2x2 --ctl auto --min 8 --ev   # 重なり・NaN・止まったままの状態を調べる（--ctl helper で補助AI ツジの判断）
 ```
 
 | 場所 | 中身 |
@@ -147,6 +149,7 @@ You are MICHI, a city's traffic-control AI. A 3D browser game made with **Claude
 - Five days, Monday to Friday: from one intersection to nine, with rain, a crash, and a fireworks night with a scramble crossing.
 - Clear the way for ambulances and fire engines along their red dotted route; keep waiting pedestrians from crossing on red.
 - Every day brings a request with no right answer — a cat asleep in the crossing, a company offering money for green lights, police asking for camera feeds without a warrant, the mayor's motorcade, a crash log you could quietly edit. Your choices lead to one of eight endings.
+- Got shut down? When you retry the day, you can spend a little budget to call TSUJI, a helper AI that takes over one intersection (click it to take it back). Each retry can add one more.
 - Everything is generated in code — no image or audio files.
 
 Controls: click / tap an intersection to switch it · arrows + `Space` to select and switch · `Z` pedestrian green · `X` auto/manual · hold `Shift` to slow time · `F` fast-forward · drag / wheel to move the camera · `Esc` pause. Gamepads work too.

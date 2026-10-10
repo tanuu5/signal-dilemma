@@ -44,7 +44,7 @@ export const en = {
   'howto.body': 'You are MICHI, the city\'s traffic-control AI. Switch the signals to keep cars and people moving. The more people you keep waiting, the lower "Satisfaction" goes — at 0 you get shut down. Now and then, someone asks you for something hard to decide.',
   'howto.toggle': 'Switch which way is green (or click / tap)',
   'howto.walk': 'Pedestrian green (stops all cars)',
-  'howto.auto': 'Toggle auto / manual',
+  'howto.auto': 'Switch manual / auto (or hand it to TSUJI, if you have a helper AI)',
   'howto.select': 'Select an intersection (keys 1–9 switch directly)',
   'howto.move': 'Move the camera (drag)',
   'howto.slow': 'Hold to overclock (slow time)',
@@ -68,6 +68,7 @@ export const en = {
   'who.yui': 'Yui (Traffic Bureau)', 'who.sys': 'SYSTEM', 'who.mayor': 'Mayor\'s Office', 'who.soramame': 'Soramame Express',
   'who.citizen': 'City Voice app', 'who.police': 'Det. Kuga (Police)', 'who.pta': 'PTA & Merchants', 'who.unknown': '???',
   'who.koban': 'Station Police Box', 'who.news': 'City News',
+  'who.tsuji': 'TSUJI (helper AI)',
 
   'car.ambulance': 'Ambulance', 'car.fire': 'Fire engine', 'car.police': 'Police car',
 
@@ -90,6 +91,11 @@ export const en = {
   'hud.offmap': '+{n}',
   'hud.log': 'Log',
   'hud.paused': 'Awaiting decision',
+  'hud.helper': 'TSUJI',
+  'hud.chip.helper': 'T',
+  'hud.helpers': 'TSUJI',
+  'hud.helpersIdle': '{n} idle',
+  'list.sep': ', ',
 
   'alert.ev': '{kind} approaching',
   'alert.labor': 'White van (♥) heading to hospital',
@@ -107,6 +113,12 @@ export const en = {
   'tut.auto': 'With more intersections, some are set to "Auto" — they switch on a fixed timer. Clicking one makes it manual. To put it back, select it and press [Auto] (X key). Try touching the glowing one.',
   'tut.auto.done': 'Right. You don\'t have to run everything by hand. Step in where it\'s busy.',
   'tut.sat': 'If "Satisfaction" up top hits 0, you get shut down. The more people kept waiting, the faster it drops.',
+
+  // Helper AI TSUJI
+  'tsuji.hello': 'TSUJI here, your helper AI. I\'ll handle {names}. Click one of my intersections any time to take it over.',
+  'tsuji.take': 'Got it, {name} is yours, MICHI. To hand me one again, select an intersection and switch its mode to TSUJI.',
+  'tsuji.assign': 'I\'ve got {name}.',
+  'tsuji.release': 'Letting go of {name}.',
 
   'd1.rush': 'Morning rush. Lots of cars coming up from the south, heading for the station to the north.',
   'd1.kids': 'School\'s out. Kids in yellow hats want to cross.',
@@ -233,6 +245,7 @@ export const en = {
   'brief.4.goal': 'Keep Satisfaction above 0',
   'brief.5': 'Last day. Get through tonight\'s fireworks, and your first week will be judged. …Let\'s do this.',
   'brief.5.goal': 'Keep Satisfaction above 0 / Handle the crowds after the fireworks',
+  'brief.helpers': 'Helper AI TSUJI: handling {names} (click one to take it over)',
 
   'rep.title': 'Daily Report',
   'rep.rank': 'Rating',
@@ -244,6 +257,8 @@ export const en = {
   'rep.nearMiss': 'Near misses',
   'rep.jaywalk': 'Jaywalkers',
   'rep.peds': 'People crossed',
+  'rep.helpers': 'Helper AI TSUJI',
+  'rep.helpersN': '{n}',
   'rep.decisions': 'Today\'s decisions',
   'rep.none': '(none)',
   'rep.budget': 'Budget',
@@ -270,6 +285,12 @@ export const en = {
   'fail.body': 'Public frustration hit its limit. MICHI, the traffic-control AI, is being suspended.',
   'fail.retry': 'Restart this day',
   'fail.toTitle': 'Back to title',
+  'fail.offer': 'YUI: Watching everything alone was too much. If we call TSUJI, the helper AI, it\'ll take one intersection off your hands.',
+  'fail.offerMore': 'YUI: We can add one more TSUJI (you have {n} now). Each one takes another intersection.',
+  'fail.hire': 'Retry with TSUJI',
+  'fail.hireMore': 'Retry with one more TSUJI',
+  'fail.cost': 'Budget −{cost}',
+  'fail.retryAlone': 'Retry on my own',
 
   'trait.compassion': 'Compassion', 'trait.fairness': 'Fairness', 'trait.honesty': 'Honesty', 'trait.efficiency': 'Efficiency',
   'end.head': 'The week\'s outcome',
@@ -290,6 +311,14 @@ export const en = {
   'end.tomorrow.title': 'Green Again Tomorrow',
   'end.tomorrow.body': 'No big incidents, no big failures. MICHI\'s first week is over. Come Monday, the morning rush will be back.',
   'end.audit.ok': 'Thursday\'s crash investigation: the cause was speeding. The accuracy of MICHI\'s logs was commended.',
+  'end.tsuji.omni': 'TSUJI: There\'s nothing left for me to do. ...MICHI, is this what you wanted?',
+  'end.tsuji.blackbox': 'TSUJI: I\'ll keep an eye on the intersections while they look into it.',
+  'end.tsuji.replaced': 'TSUJI: I\'ll help with the handover, right to the end.',
+  'end.tsuji.everyone': 'TSUJI: I hope we get to work together next year, too.',
+  'end.tsuji.mayor': 'TSUJI: At my intersections, nobody got special treatment.',
+  'end.tsuji.kind': 'TSUJI: I copied you and waited for a cat, too.',
+  'end.tsuji.machine': 'TSUJI: The numbers are perfect. ...I\'m not sure how to feel about that either.',
+  'end.tsuji.tomorrow': 'TSUJI: I\'m glad we worked together this week. See you on Monday.',
   'end.again': 'Back to title',
   'end.days': 'Replay from a day',
 
